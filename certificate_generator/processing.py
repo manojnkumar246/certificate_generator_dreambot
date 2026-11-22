@@ -17,6 +17,11 @@ import pandas as pd
 from certificate_generator.emailing import connect_smtp, send_email
 from certificate_generator.personalize_template import personalize_certificate
 from certificate_generator.settings import get_public_app_url
+from certificate_generator.google_drive import (
+    get_drive_service,
+    create_or_get_certificates_folder,
+    upload_certificate_to_drive,
+)
 
 
 REQUIRED_COLUMNS = ("Name", "Email", "Send", "Duration")
@@ -113,8 +118,13 @@ def generate_previews(
     students: pd.DataFrame,
     template_path: Path | str,
     output_root: Path | str,
+    use_google_drive: bool = True,
 ) -> PreviewBatch:
-    """Create unique certificates and reports without making SMTP connections."""
+    """Create unique certificates and reports without making SMTP connections.
+    
+    If use_google_drive is True, certificates are uploaded to Google Drive and
+    public URLs are generated automatically.
+    """
     normalized = normalize_student_columns(students).copy()
     for column in REQUIRED_COLUMNS:
         normalized[column] = normalized[column].fillna("").astype(str).str.strip()
@@ -127,6 +137,20 @@ def generate_previews(
     certificate_dir.mkdir(parents=True, exist_ok=False)
 
     public_app_url = get_public_app_url()
+    
+    # Initialize Google Drive if enabled
+    drive_service = None
+    folder_id = None
+    if use_google_drive:
+        try:
+            drive_service = get_drive_service()
+            folder_id = create_or_get_certificates_folder(drive_service)
+        except Exception as error:
+            raise ValueError(
+                f"Google Drive setup failed: {error}. "
+                "Ensure credentials.json is in the project root."
+            )
+    
     records: list[dict[str, str]] = []
     certificate_paths: dict[str, Path] = {}
 
@@ -136,7 +160,10 @@ def generate_previews(
         uid = f"DB-WS7-{timestamp.year}-{uuid.uuid4().hex.upper()}"
         expires_at = _add_months(timestamp, 6)
         requested = row["Send"].lower() == "yes"
-        verification_url = build_verification_url(uid, public_app_url)
+        
+        # Build verification URL (from Google Drive or fallback)
+        verification_url = ""
+        
         record = {
             "certificate_uid": uid,
             "name": name,
@@ -167,6 +194,28 @@ def generate_previews(
             )
             record["certificate_status"] = "generated"
             certificate_paths[uid] = certificate_path
+            
+            # Upload to Google Drive if enabled
+            if drive_service and folder_id:
+                try:
+                    drive_url = upload_certificate_to_drive(
+                        drive_service,
+                        folder_id,
+                        certificate_path,
+                        uid,
+                    )
+                    record["verification_url"] = drive_url
+                except Exception as error:
+                    record["error"] = _append_error(
+                        record["error"],
+                        f"Google Drive upload failed: {error}",
+                    )
+            else:
+                # Fallback to app-based URL
+                record["verification_url"] = build_verification_url(
+                    uid, public_app_url
+                )
+            
             _save_certificate_record(
                 output_root,
                 uid,

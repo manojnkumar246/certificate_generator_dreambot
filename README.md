@@ -1,30 +1,49 @@
-# Internship Certificate Generator
+# Certificate Generator with Google Drive Integration
 
-A Streamlit application that creates personalized internship certificates from
-an Excel roster, emails selected certificates, and records the result of each
-attempt.
+A Streamlit application that creates personalized internship certificates from an Excel roster, **automatically uploads to Google Drive**, and emails certificates to recipients.
 
-## Project layout
+## 🆕 New Feature: Automatic Google Drive Upload
+
+Generated certificates are **automatically uploaded to Google Drive** and given **public shareable links**. No app deployment needed!
+
+**How it works:**
+1. Generate certificates locally
+2. Certificates auto-upload to your Google Drive folder
+3. Public URLs are generated automatically
+4. URLs are used in emails and delivery reports
+5. Anyone with the link can download the certificate
+
+---
+
+## Project Layout
 
 ```text
 certificate_generator/
-  certificates.py       Certificate image generation
-  emailing.py           Gmail SMTP connection and email composition
-  processing.py         Batch previews, UIDs, expiry, and delivery report
-  personalize_template.py Pillow certificate renderer and single-certificate CLI
+  certificates.py           Certificate image generation
+  emailing.py              Gmail SMTP connection and email composition
+  processing.py            Batch previews, UIDs, expiry, and delivery report
+  personalize_template.py  Pillow certificate renderer
+  google_drive.py          🆕 Google Drive upload and link generation
   create_sample_excel.py
 inputs/
-  template.png          Default certificate artwork
-  signature.png         Source signature artwork
-outputs/                One folder per processing run
+  template.png             Default certificate artwork
+  signature.png            Source signature artwork
+outputs/                   Local backup copies of generated certificates
 tests/
-main.py                 Streamlit entry point
-generate_certificate.py Standalone single-certificate command
+main.py                    Streamlit entry point
+generate_certificate.py    Standalone single-certificate command
 pyproject.toml
 requirements.txt
+credentials.json           🆕 Google OAuth2 credentials (not committed)
+token.pickle              🆕 Auto-generated auth token (not committed)
+GOOGLE_DRIVE_SETUP.md     🆕 Google Drive OAuth2 setup guide
 ```
 
-## Setup and run
+---
+
+## Setup and Run
+
+### 1. Install Dependencies
 
 Use Python 3.10 or newer:
 
@@ -32,107 +51,79 @@ Use Python 3.10 or newer:
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-streamlit run main.py
 ```
 
-Upload an `.xlsx` workbook with `Name`, `Email`, `Send`, and `Duration`
-columns. Each row's `Duration` is printed on that student's certificate.
-Column names are case-insensitive; `student_name`, `student_email`,
-`send_email`, and `workshop_duration` are also accepted. Use `yes` in `Send`
-for recipients who should receive an email; other values are skipped.
+### 2. Configure Google Drive (Optional but Recommended)
 
-The standalone certificate script uses `inputs/template.png`. The Streamlit app
-can also use a template image uploaded in the UI. The sender address is
-configured in the application; the app password is read from the project-root
-`.env` file.
+For automatic public certificate links without deploying an app:
+
+1. Follow [GOOGLE_DRIVE_SETUP.md](./GOOGLE_DRIVE_SETUP.md) (~5 minutes)
+2. Place `credentials.json` in the project root
+3. Done! Certificates will auto-upload on first run
+
+### 3. Configure Gmail (For Email Sending)
+
 Add this entry to `.env` without quotes:
 
 ```text
 APP_PASSWORD=your_gmail_app_password
+APP_ADMIN_PASSWORD=your_admin_password
 ```
 
-For a starting template, copy `.env.sample` to `.env` and set values locally.
-Never commit `.env`; enter production values in the hosting provider's secret
-settings instead.
+Get your Gmail app password:
+1. Go to https://myaccount.google.com/apppasswords
+2. Select **Mail** → **Windows Computer** (or your device)
+3. Google generates a 16-char password → Copy it
+4. Paste it in `.env`
 
-The `.env` file is ignored by Git. The app password is not displayed in the GUI
-or included in run reports. Restart the Streamlit app after changing `.env`.
-If no student row is marked `yes`, the app does not require the password.
-The provided student workbook is excluded from Git because it contains
-recipient information. Upload your workbook in the app; the sample workbook can
-be recreated locally with `python -m certificate_generator.create_sample_excel`.
-
-## Unique IDs, previews, and certificate links
-
-The app generates a globally unique UID for each certificate. It first creates
-the certificates and displays every preview. Email is only sent after you
-approve each selected recipient's preview and click the explicit send button.
-The UID, row-specific duration, verification URL, and six-month expiry are in
-the run's recipient report.
-
-When deployed, a verification link points back to this app with the certificate
-UID. The app serves the certificate only while its six-month registry record
-has not expired. Anyone who obtains a link can view that certificate; it is a
-bearer link, not access restricted to the recipient's email account.
-
-Set `APP_PUBLIC_URL` to the deployed HTTPS base URL in the hosting provider's
-secret/environment settings (or `.env` for local testing). On Render, the app
-can also use the platform-provided `RENDER_EXTERNAL_URL`. Generate a new batch
-after deployment so certificates and email messages contain the hosted URL.
-Certificates created earlier with localhost URLs must be regenerated.
-
-The public management UI requires `APP_ADMIN_PASSWORD` in the host's secret
-settings. Certificate links remain accessible without that admin password.
-Never commit `.env` or paste secrets into chat. Configure `APP_PASSWORD` in the
-host's secret settings for Gmail SMTP; hosting providers may restrict SMTP.
-
-This app stores certificates and their expiry registry in `outputs/`. A
-deployment must mount durable persistent storage there or the public links will
-break after restarts/redeploys. It must also permit outbound SMTP on port 587.
-For example, Render documents that its free web services lose local files when
-they restart or spin down, and block outbound SMTP on port 587; therefore that
-free plan is not suitable for this workflow. See [Render's free-instance
-limitations](https://render.com/docs/free). A paid service with a persistent
-disk may be required. Do not expose the management UI without configuring
-`APP_ADMIN_PASSWORD`; use a host that supports private source repositories and
-configure the admin password and SMTP secret before enabling sending.
-
-## Run output
-
-Each processing run creates a uniquely named folder in `outputs/` containing:
-
-```text
-<run-id>/
-  certificates/          Individual generated certificates
-  certificates.zip       Downloadable archive
-  delivery_report.csv    One row per student and email outcome
-```
-
-The report records whether a certificate was generated, whether an email was
-sent, skipped, or failed, and any associated error. A `sent` result means the
-SMTP server accepted the message; it cannot confirm delivery to the recipient's
-inbox.
-
-To recreate the example workbook:
+### 4. Run the App
 
 ```powershell
-python -m certificate_generator.create_sample_excel
+streamlit run main.py
 ```
 
-## Generate a single personalized certificate
+Then:
+1. Upload an `.xlsx` workbook with columns: **Name**, **Email**, **Send**, **Duration**
+2. Click **"Generate certificate previews"**
+3. Review each preview
+4. Certificates are auto-uploaded to Google Drive (if set up)
+5. Click **"Approve & Send"** to email
+6. Download the recipient report (`.csv`)
 
-Run the standalone Pillow script to fill the supplied template's certificate
-number, student name, duration, and verification URL:
+---
 
-```powershell
-python generate_certificate.py
+## ✨ Features
+
+✅ **Google Drive Integration:** Auto-upload and generate public links  
+✅ **Certificate Generation:** Personalized from template image  
+✅ **Email Delivery:** Gmail SMTP with certificate attachment  
+✅ **Preview & Approval:** Review before sending  
+✅ **Delivery Report:** CSV tracking all sending results  
+✅ **Expiry Registry:** 6-month link expiration (if using deployed app)  
+✅ **CLI:** Standalone `generate_certificate.py` for single certificates  
+
+---
+
+## Usage
+
+### Upload Student Data
+
+The `.xlsx` file should have these columns (case-insensitive):
+- **Name** (or `student_name`)
+- **Email** (or `student_email`)
+- **Send** (or `send_email`) — Use `yes` to request email delivery
+- **Duration** (or `workshop_duration`) — Workshop date/period
+
+Example:
+```
+Name           Email              Send  Duration
+Alice Example  alice@example.com  yes   1–3 August 2026
+Bob Example    bob@example.com    no    1–3 August 2026
 ```
 
-By default, it reads `inputs/template.png` and writes `certificate_output.jpg`
-using a fresh unique certificate number, the example student, and duration.
-The standalone command does not upload the image or create a Drive share link.
-Use the approved Streamlit workflow to create recipient-only Drive links.
-Override values or paths for another certificate:
+### Generate Certificate
+
+Use the standalone script for a single certificate:
 
 ```powershell
 python generate_certificate.py `
@@ -141,12 +132,55 @@ python generate_certificate.py `
   --output outputs/jane_doe.jpg
 ```
 
-The renderer uses the supplied template's measured placeholder positions,
-scales them with the image dimensions, and reduces font size when a value
-needs to fit its area.
+---
+
+## Deployment Options
+
+If you want a **live hosted app** (optional):
+
+- **Railway:** Easiest free tier (~5 min setup) — See [DEPLOYMENT.md](./DEPLOYMENT.md)
+- **Render:** Alternative free tier
+- **Self-hosted:** Use always-free VM (Azure/GCP/AWS)
+
+**Note:** Google Drive integration works **without deployment**. You can generate and share certificates entirely from your computer.
+
+---
 
 ## Tests
 
 ```powershell
 python -m unittest discover -s tests
 ```
+
+---
+
+## Security Notes
+
+⚠️ **Never commit these files:**
+- `.env` — Contains Gmail app password
+- `credentials.json` — Google OAuth2 credentials
+- `token.pickle` — Google authentication token
+
+✅ All are in `.gitignore` by default.
+
+---
+
+## Troubleshooting
+
+### "Certificate not uploading to Google Drive"
+→ Check [GOOGLE_DRIVE_SETUP.md](./GOOGLE_DRIVE_SETUP.md) for OAuth2 setup
+
+### "Email not sending"
+→ Ensure `APP_PASSWORD` is set in `.env` (use Gmail app password, not phone password)
+
+### "Google Drive folder is private"
+→ Check folder permissions in Google Drive (should be "Anyone with link can view")
+
+---
+
+## Questions?
+
+Refer to individual guides:
+- **Google Drive:** [GOOGLE_DRIVE_SETUP.md](./GOOGLE_DRIVE_SETUP.md)
+- **Deployment:** [DEPLOYMENT.md](./DEPLOYMENT.md)
+- **Quick Start:** [QUICK_START.md](./QUICK_START.md)

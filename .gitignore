@@ -3,7 +3,10 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.production
 inputs/sample_students.xlsx
 certificate_output.jpg
 outputs/*
 !outputs/.gitkeep
+credentials.json
+token.pickle
