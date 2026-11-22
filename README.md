@@ -51,6 +51,10 @@ Add this entry to `.env` without quotes:
 APP_PASSWORD=your_gmail_app_password
 ```
 
+For a starting template, copy `.env.sample` to `.env` and set values locally.
+Never commit `.env`; enter production values in the hosting provider's secret
+settings instead.
+
 The `.env` file is ignored by Git. The app password is not displayed in the GUI
 or included in run reports. Restart the Streamlit app after changing `.env`.
 If no student row is marked `yes`, the app does not require the password.
