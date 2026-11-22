@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "internship-certificate-generator"
+version = "1.0.0"
+description = "Generate and email internship certificates from a student roster"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "streamlit>=1.48.0",
+    "pandas>=2.0.0",
+    "Pillow>=10.0.0",
+    "openpyxl>=3.1.0",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["certificate_generator*"]
+exclude = ["tests*"]
