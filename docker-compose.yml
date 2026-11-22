@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  certificate-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      # Gmail SMTP credentials (set in .env.production)
+      APP_PASSWORD: ${APP_PASSWORD}
+      # Public app URL after deployment
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL}
+      # Admin password for the hosted management UI
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD}
+      # Streamlit configuration
+      STREAMLIT_SERVER_PORT: 8501
+      STREAMLIT_SERVER_ADDRESS: 0.0.0.0
+      STREAMLIT_SERVER_HEADLESS: "true"
+      STREAMLIT_CLIENT_SHOW_ERROR_DETAILS: "false"
+    volumes:
+      # Persistent storage for certificates and registry (required)
+      - certificates_storage:/app/outputs
+      # Optional: input templates
+      - ./inputs:/app/inputs:ro
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  certificates_storage:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

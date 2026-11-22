@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: certificate-generator
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run main.py --server.port=8501 --server.address=0.0.0.0
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: APP_PASSWORD
+        scope: build
+      - key: APP_ADMIN_PASSWORD
+        scope: build
+      - key: APP_PUBLIC_URL
+        scope: build
+      - key: STREAMLIT_SERVER_PORT
+        value: "8501"
+      - key: STREAMLIT_SERVER_ADDRESS
+        value: 0.0.0.0
+      - key: STREAMLIT_SERVER_HEADLESS
+        value: "true"
+      - key: STREAMLIT_CLIENT_SHOW_ERROR_DETAILS
+        value: "false"
+    disks:
+      - name: outputs
+        mountPath: /app/outputs
+        sizeGB: 1
